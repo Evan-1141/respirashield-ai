@@ -1,26 +1,229 @@
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   RespiraShield AI — Design System
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Light Mode Tokens ──────────────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --surface: #ffffff;
+  --surface-hover: #f1f5f9;
+  --surface-secondary: #f8fafc;
+  --border: #e2e8f0;
+  --border-hover: #cbd5e1;
+  --muted: #64748b;
+  --muted-foreground: #94a3b8;
+
+  /* Brand */
+  --primary: #0891b2;
+  --primary-foreground: #ffffff;
+  --primary-light: #ecfeff;
+  --primary-hover: #0e7490;
+
+  /* Semantic — Risk */
+  --risk-low: #16a34a;
+  --risk-low-bg: #f0fdf4;
+  --risk-low-border: #bbf7d0;
+  --risk-medium: #d97706;
+  --risk-medium-bg: #fffbeb;
+  --risk-medium-border: #fde68a;
+  --risk-high: #dc2626;
+  --risk-high-bg: #fef2f2;
+  --risk-high-border: #fecaca;
+
+  /* Device status */
+  --status-online: #16a34a;
+  --status-online-bg: #f0fdf4;
+  --status-offline: #6b7280;
+  --status-offline-bg: #f3f4f6;
+  --status-active: #16a34a;
+  --status-inactive: #ef4444;
+
+  /* Chart colors */
+  --chart-1: #0891b2;
+  --chart-2: #8b5cf6;
+  --chart-3: #f59e0b;
+  --chart-4: #10b981;
+  --chart-5: #ef4444;
+  --chart-6: #6366f1;
+
+  /* Sidebar */
+  --sidebar-bg: #ffffff;
+  --sidebar-border: #e2e8f0;
+  --sidebar-hover: #f1f5f9;
+  --sidebar-active: #ecfeff;
+  --sidebar-active-text: #0891b2;
+  --sidebar-text: #475569;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
 }
 
+/* ─── Dark Mode Tokens ───────────────────────────────────────────────────── */
+[data-theme='dark'] {
+  --background: #0c1222;
+  --foreground: #e2e8f0;
+  --surface: #1e293b;
+  --surface-hover: #273549;
+  --surface-secondary: #162032;
+  --border: #334155;
+  --border-hover: #475569;
+  --muted: #94a3b8;
+  --muted-foreground: #64748b;
+
+  --primary: #22d3ee;
+  --primary-foreground: #0c1222;
+  --primary-light: #083344;
+  --primary-hover: #06b6d4;
+
+  --risk-low: #4ade80;
+  --risk-low-bg: #052e16;
+  --risk-low-border: #166534;
+  --risk-medium: #fbbf24;
+  --risk-medium-bg: #451a03;
+  --risk-medium-border: #92400e;
+  --risk-high: #f87171;
+  --risk-high-bg: #450a0a;
+  --risk-high-border: #991b1b;
+
+  --status-online: #4ade80;
+  --status-online-bg: #052e16;
+  --status-offline: #6b7280;
+  --status-offline-bg: #1f2937;
+  --status-active: #4ade80;
+  --status-inactive: #f87171;
+
+  --chart-1: #22d3ee;
+  --chart-2: #a78bfa;
+  --chart-3: #fbbf24;
+  --chart-4: #34d399;
+  --chart-5: #f87171;
+  --chart-6: #818cf8;
+
+  --sidebar-bg: #1e293b;
+  --sidebar-border: #334155;
+  --sidebar-hover: #273549;
+  --sidebar-active: #083344;
+  --sidebar-active-text: #22d3ee;
+  --sidebar-text: #94a3b8;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+}
+
+/* ─── Tailwind v4 Theme Extension ────────────────────────────────────────── */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-border: var(--border);
+  --color-border-hover: var(--border-hover);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-light: var(--primary-light);
+  --color-primary-hover: var(--primary-hover);
+  --color-risk-low: var(--risk-low);
+  --color-risk-low-bg: var(--risk-low-bg);
+  --color-risk-low-border: var(--risk-low-border);
+  --color-risk-medium: var(--risk-medium);
+  --color-risk-medium-bg: var(--risk-medium-bg);
+  --color-risk-medium-border: var(--risk-medium-border);
+  --color-risk-high: var(--risk-high);
+  --color-risk-high-bg: var(--risk-high-bg);
+  --color-risk-high-border: var(--risk-high-border);
+  --color-status-online: var(--status-online);
+  --color-status-online-bg: var(--status-online-bg);
+  --color-status-offline: var(--status-offline);
+  --color-status-offline-bg: var(--status-offline-bg);
+  --color-status-active: var(--status-active);
+  --color-status-inactive: var(--status-inactive);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-active-text: var(--sidebar-active-text);
+  --color-sidebar-text: var(--sidebar-text);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ─── Base Styles ────────────────────────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Transitions ────────────────────────────────────────────────────────── */
+[data-theme] {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* ─── Focus ring ─────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─── Custom scrollbar (Webkit) ──────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-hover);
+}
+
+/* ─── Recharts override for dark mode ────────────────────────────────────── */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: var(--border);
+}
+.recharts-text {
+  fill: var(--muted);
+}
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
+  border-radius: 8px !important;
+  box-shadow: var(--shadow-md) !important;
+}
+.recharts-tooltip-item {
+  color: var(--foreground) !important;
+}
+.recharts-tooltip-label {
+  color: var(--muted) !important;
 }
