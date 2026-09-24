@@ -1,7 +1,8 @@
 /**
  * RespiraShield AI — API Abstraction Layer
- * Currently returns mock data. Replace with actual API calls when backend is ready.
- * Components import from here, not directly from mock-data.
+ *
+ * Dashboard/device/history masih menggunakan mock data.
+ * Prediction menggunakan model Logistic Regression melalui FastAPI.
  */
 
 import {
@@ -18,7 +19,12 @@ import {
 
 import { RISK_LEVELS } from './config';
 
+// ─── API Configuration ─────────────────────────────────────────────────────
+
+const API_URL = 'http://127.0.0.1:8000';
+
 // ─── Simulate network delay ────────────────────────────────────────────────
+
 function delay(ms = 500) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -37,34 +43,43 @@ export async function getAirQualityTrends() {
 
 export async function getHistoricalAirQuality(range = '24h') {
   await delay(400);
+
   const now = new Date('2026-09-23T07:30:00+08:00');
+
   let hoursBack;
 
   switch (range) {
     case '7d':
       hoursBack = 168;
       break;
+
     case '30d':
       hoursBack = 720;
       break;
+
     case '24h':
     default:
       hoursBack = 24;
       break;
   }
 
-  const cutoff = new Date(now.getTime() - hoursBack * 60 * 60 * 1000);
+  const cutoff = new Date(
+    now.getTime() - hoursBack * 60 * 60 * 1000
+  );
+
   const filtered = historicalAirQuality.filter(
     (d) => new Date(d.timestamp) >= cutoff
   );
 
-  // Downsample for longer ranges to keep chart performant
+  // Downsample untuk range yang lebih panjang
   if (range === '30d') {
     return filtered.filter((_, i) => i % 6 === 0);
   }
+
   if (range === '7d') {
     return filtered.filter((_, i) => i % 3 === 0);
   }
+
   return filtered;
 }
 
@@ -94,78 +109,176 @@ export async function getPredictionHistory() {
 
 export async function getPredictionDetail(id) {
   await delay(300);
-  const prediction = predictionHistory.find((p) => p.id === id);
-  if (!prediction) return null;
+
+  const prediction = predictionHistory.find(
+    (p) => p.id === id
+  );
+
+  if (!prediction) {
+    return null;
+  }
+
   return { ...prediction };
 }
 
 /**
- * Mock prediction function.
- * Simulates ML prediction with a weighted scoring approach.
- * Will be replaced with actual API call to ML backend.
+ * Prediksi risiko menggunakan model Logistic Regression
+ * melalui FastAPI backend.
  */
 export async function predictRisk(formData) {
-  await delay(1500); // Simulate model inference time
-
   const {
-    age, asthmaHistory, smokingStatus, outdoorExposure,
-    pm25, pm10, so2, no2, co, o3, temperature, humidity,
+    age,
+    asthmaHistory,
+    smokingStatus,
+    outdoorExposure,
+
+    pm25,
+    pm10,
+    so2,
+    no2,
+    co,
+    o3,
+
+    temperature,
+    humidity,
   } = formData;
 
-  // Simple mock scoring logic (NOT real ML)
-  let score = 0;
+  // ─────────────────────────────────────────────────────────
+  // Konversi status asma
+  // ─────────────────────────────────────────────────────────
 
-  // Air quality factors
-  if (pm25 > 75) score += 2;
-  else if (pm25 > 35) score += 1;
+  const asthmaValue =
+    typeof asthmaHistory === 'boolean'
+      ? Number(asthmaHistory)
+      : Number(asthmaHistory);
 
-  if (pm10 > 150) score += 2;
-  else if (pm10 > 50) score += 1;
+  // ─────────────────────────────────────────────────────────
+  // Konversi status merokok
+  //
+  // Jika UI sudah mengirim angka, gunakan angka tersebut.
+  // Jika UI mengirim string, sementara gunakan:
+  // 0 = tidak merokok
+  // 1 = pernah/former
+  // 2 = aktif
+  //
+  // Encoding ini HARUS sama dengan encoding dataset training.
+  // ─────────────────────────────────────────────────────────
 
-  if (co > 9) score += 2;
-  else if (co > 4) score += 1;
+  let smokingValue;
 
-  if (no2 > 80) score += 1;
-  if (so2 > 80) score += 1;
-  if (o3 > 120) score += 1;
-
-  // User factors
-  if (age > 55) score += 2;
-  else if (age > 40) score += 1;
-
-  if (asthmaHistory) score += 2;
-  if (smokingStatus === 'active') score += 2;
-  else if (smokingStatus === 'former') score += 1;
-
-  if (outdoorExposure > 6) score += 2;
-  else if (outdoorExposure > 3) score += 1;
-
-  // Environment
-  if (temperature > 35 || temperature < 10) score += 1;
-  if (humidity > 80) score += 1;
-
-  // Determine risk level
-  let riskLevel;
-  let confidence;
-  if (score >= 10) {
-    riskLevel = 2;
-    confidence = 0.85 + Math.random() * 0.1;
-  } else if (score >= 5) {
-    riskLevel = 1;
-    confidence = 0.55 + Math.random() * 0.15;
+  if (typeof smokingStatus === 'number') {
+    smokingValue = smokingStatus;
   } else {
-    riskLevel = 0;
-    confidence = 0.80 + Math.random() * 0.15;
+    const smokingMap = {
+      never: 0,
+      none: 0,
+      non_smoker: 0,
+      'non-smoker': 0,
+
+      former: 1,
+      pernah: 1,
+
+      active: 2,
+      smoker: 2,
+      aktif: 2,
+    };
+
+    smokingValue =
+      smokingMap[String(smokingStatus).toLowerCase()] ?? 0;
   }
+
+  // ─────────────────────────────────────────────────────────
+  // Request ke FastAPI
+  // ─────────────────────────────────────────────────────────
+
+  const response = await fetch(`${API_URL}/predict`, {
+    method: 'POST',
+
+    headers: {
+      'Content-Type': 'application/json',
+    },
+
+    body: JSON.stringify({
+      PM2_5: Number(pm25),
+      PM10: Number(pm10),
+      SO2: Number(so2),
+      NO2: Number(no2),
+      CO: Number(co),
+      O3: Number(o3),
+
+      Suhu_Udara: Number(temperature),
+      Kelembaban_Udara: Number(humidity),
+
+      Usia: Number(age),
+      Riwayat_Asma: asthmaValue,
+      Status_Merokok: smokingValue,
+      Durasi_Paparan_Outdoor: Number(outdoorExposure),
+    }),
+  });
+
+  // ─────────────────────────────────────────────────────────
+  // Error handling
+  // ─────────────────────────────────────────────────────────
+
+  if (!response.ok) {
+    let errorMessage = `Prediction gagal (${response.status})`;
+
+    try {
+      const errorData = await response.json();
+
+      if (errorData?.detail) {
+        errorMessage =
+          typeof errorData.detail === 'string'
+            ? errorData.detail
+            : JSON.stringify(errorData.detail);
+      }
+    } catch {
+      // Gunakan pesan default jika response bukan JSON
+    }
+
+    throw new Error(errorMessage);
+  }
+
+  const result = await response.json();
+
+  // ─────────────────────────────────────────────────────────
+  // Kembalikan format yang kompatibel dengan UI lama
+  // ─────────────────────────────────────────────────────────
+
+  const riskLevel = Number(result.risk_class);
 
   return {
     id: `pred-${Date.now()}`,
+
     riskLevel,
-    predictionScore: Math.round(confidence * 100) / 100,
+
+    // Backend saat ini belum mengirim probabilitas.
+    // Jangan membuat confidence palsu.
+    predictionScore: null,
+
     riskInfo: RISK_LEVELS[riskLevel],
+
+    riskLabel: result.risk_label,
+
     createdAt: new Date().toISOString(),
-    userInput: { age, asthmaHistory, smokingStatus, outdoorExposure },
-    airQuality: { pm25, pm10, so2, no2, co, o3, temperature, humidity },
+
+    userInput: {
+      age,
+      asthmaHistory,
+      smokingStatus,
+      outdoorExposure,
+    },
+
+    airQuality: {
+      pm25,
+      pm10,
+      so2,
+      no2,
+      co,
+      o3,
+      temperature,
+      humidity,
+    },
   };
 }
 
@@ -178,8 +291,10 @@ export async function getUserProfile() {
 
 export async function updateUserProfile(data) {
   await delay(500);
-  // In production, this would POST to the API
+
+  // Masih menggunakan mock data untuk profile
   Object.assign(userProfile, data);
+
   return { ...userProfile };
 }
 
@@ -188,4 +303,16 @@ export async function updateUserProfile(data) {
 export async function getSystemStatus() {
   await delay(200);
   return { ...systemStatus };
+}
+
+// ─── Backend Model Status ───────────────────────────────────────────────────
+
+export async function getModelStatus() {
+  const response = await fetch(`${API_URL}/model-status`);
+
+  if (!response.ok) {
+    throw new Error('Backend tidak dapat diakses');
+  }
+
+  return response.json();
 }
