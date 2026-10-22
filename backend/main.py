@@ -23,7 +23,9 @@ app.add_middleware(
 )
 
 # Load model Logistic Regression
-model = joblib.load("model/respirashield_model.pkl")
+import pathlib
+BASE_DIR = pathlib.Path(__file__).resolve().parent
+model = joblib.load(BASE_DIR / "model" / "respirashield_model.pkl")
 
 
 # =========================================================

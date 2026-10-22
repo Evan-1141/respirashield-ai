@@ -21,7 +21,7 @@ import { RISK_LEVELS } from './config';
 
 // ─── API Configuration ─────────────────────────────────────────────────────
 
-const API_URL = 'http://127.0.0.1:8000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 // ─── Simulate network delay ────────────────────────────────────────────────
 
@@ -191,30 +191,37 @@ export async function predictRisk(formData) {
   // Request ke FastAPI
   // ─────────────────────────────────────────────────────────
 
-  const response = await fetch(`${API_URL}/predict`, {
-    method: 'POST',
+  let response;
+  try {
+    response = await fetch(`${API_URL}/predict`, {
+      method: 'POST',
 
-    headers: {
-      'Content-Type': 'application/json',
-    },
+      headers: {
+        'Content-Type': 'application/json',
+      },
 
-    body: JSON.stringify({
-      PM2_5: Number(pm25),
-      PM10: Number(pm10),
-      SO2: Number(so2),
-      NO2: Number(no2),
-      CO: Number(co),
-      O3: Number(o3),
+      body: JSON.stringify({
+        PM2_5: Number(pm25),
+        PM10: Number(pm10),
+        SO2: Number(so2),
+        NO2: Number(no2),
+        CO: Number(co),
+        O3: Number(o3),
 
-      Suhu_Udara: Number(temperature),
-      Kelembaban_Udara: Number(humidity),
+        Suhu_Udara: Number(temperature),
+        Kelembaban_Udara: Number(humidity),
 
-      Usia: Number(age),
-      Riwayat_Asma: asthmaValue,
-      Status_Merokok: smokingValue,
-      Durasi_Paparan_Outdoor: Number(outdoorExposure),
-    }),
-  });
+        Usia: Number(age),
+        Riwayat_Asma: asthmaValue,
+        Status_Merokok: smokingValue,
+        Durasi_Paparan_Outdoor: Number(outdoorExposure),
+      }),
+    });
+  } catch (networkError) {
+    throw new Error(
+      `Gagal terhubung ke backend API (${API_URL}). Pastikan server FastAPI di port 8000 sudah dijalankan.`
+    );
+  }
 
   // ─────────────────────────────────────────────────────────
   // Error handling
@@ -308,11 +315,17 @@ export async function getSystemStatus() {
 // ─── Backend Model Status ───────────────────────────────────────────────────
 
 export async function getModelStatus() {
-  const response = await fetch(`${API_URL}/model-status`);
+  try {
+    const response = await fetch(`${API_URL}/model-status`);
 
-  if (!response.ok) {
-    throw new Error('Backend tidak dapat diakses');
+    if (!response.ok) {
+      throw new Error('Backend tidak dapat diakses');
+    }
+
+    return response.json();
+  } catch (networkError) {
+    throw new Error(
+      `Gagal terhubung ke server backend di ${API_URL}.`
+    );
   }
-
-  return response.json();
 }
