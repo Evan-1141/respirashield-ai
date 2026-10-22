@@ -37,14 +37,15 @@ export default function SensorCard({ paramKey, value, showStatus = true }) {
           <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
             status.color === 'green' ? 'bg-risk-low-bg text-risk-low'
             : status.color === 'yellow' ? 'bg-risk-medium-bg text-risk-medium'
-            : 'bg-risk-high-bg text-risk-high'
+            : status.color === 'red' ? 'bg-risk-high-bg text-risk-high'
+            : 'bg-muted text-muted-foreground border border-border'
           }`}>
             {status.label}
           </span>
         )}
       </div>
       <p className="text-2xl font-semibold text-foreground tabular-nums">
-        {typeof value === 'number' ? value.toFixed(1) : value}
+        {typeof value === 'number' ? value.toFixed(1) : (value ?? '—')}
       </p>
       <p className="text-xs text-muted mt-0.5">{config.unit}</p>
     </div>

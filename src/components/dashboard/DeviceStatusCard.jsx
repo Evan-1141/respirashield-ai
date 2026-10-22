@@ -27,22 +27,28 @@ export default function DeviceStatusCard({ device }) {
             <StatusBadge type="status" color={device.status} size="sm" />
           </div>
           <p className="text-xs text-muted">
-            Terakhir terlihat:{' '}
-            {new Date(device.lastSeen).toLocaleString('id-ID', {
-              day: 'numeric',
-              month: 'short',
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
+            {device.lastSeen ? (
+              <>
+                Terakhir terlihat:{' '}
+                {new Date(device.lastSeen).toLocaleString('id-ID', {
+                  day: 'numeric',
+                  month: 'short',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </>
+            ) : (
+              'Belum ada komunikasi'
+            )}
           </p>
         </div>
       </div>
       <div className="mt-3 pt-3 border-t border-border flex items-center gap-4 text-xs text-muted">
         <div className="flex items-center gap-1.5">
           <Activity className="w-3.5 h-3.5" />
-          <span>{device.activeSensors || 5}/{device.totalSensors || 6} sensor aktif</span>
+          <span>{device.status === 'online' ? (device.activeSensors ?? 6) : 0}/{device.totalSensors || 6} sensor aktif</span>
         </div>
-        <span className="text-muted-foreground">Mock Device</span>
+        <span className="text-muted-foreground">{device.status === 'online' ? 'Hardware Terhubung' : 'Hardware Offline'}</span>
       </div>
     </div>
   );

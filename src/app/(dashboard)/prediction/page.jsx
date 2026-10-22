@@ -9,15 +9,17 @@ import { predictRisk } from '@/lib/api';
 export default function PredictionPage() {
   const [result, setResult] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   async function handleSubmit(formData) {
     setIsLoading(true);
     setResult(null);
+    setError(null);
     try {
       const prediction = await predictRisk(formData);
       setResult(prediction);
     } catch (err) {
-      console.error('Prediction failed:', err);
+      setError(err.message || 'Terjadi kesalahan tidak terduga.');
     } finally {
       setIsLoading(false);
     }
@@ -33,6 +35,12 @@ export default function PredictionPage() {
         title="Prediksi Risiko Pernapasan"
         subtitle="Masukkan data untuk mendapatkan klasifikasi risiko gangguan pernapasan."
       />
+
+      {error && (
+        <div className="bg-risk-high/10 border border-risk-high text-risk-high px-4 py-3 rounded-lg mb-4">
+          <p className="text-sm font-medium">{error}</p>
+        </div>
+      )}
 
       {!result ? (
         <PredictionForm onSubmit={handleSubmit} isLoading={isLoading} />

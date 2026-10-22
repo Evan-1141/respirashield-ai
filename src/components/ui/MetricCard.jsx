@@ -39,6 +39,8 @@ export default function MetricCard({ label, value, unit, icon: Icon, trend, stat
                 ? 'bg-risk-medium-bg text-risk-medium'
                 : statusColor === 'red'
                 ? 'bg-risk-high-bg text-risk-high'
+                : statusColor === 'gray'
+                ? 'bg-muted text-muted-foreground border border-border'
                 : 'bg-surface-secondary text-muted'
             }`}
           >
@@ -50,14 +52,14 @@ export default function MetricCard({ label, value, unit, icon: Icon, trend, stat
       <div className="flex items-end justify-between">
         <div>
           <p className="text-2xl font-semibold text-foreground tabular-nums">
-            {typeof value === 'number' ? value.toFixed(1) : value}
+            {typeof value === 'number' ? value.toFixed(1) : (value ?? '—')}
           </p>
           {unit && (
             <p className="text-xs text-muted mt-0.5">{unit}</p>
           )}
         </div>
 
-        {trendValue !== null && (
+        {trendValue !== null && value !== null && value !== undefined && (
           <div
             className={`flex items-center gap-0.5 text-xs font-medium ${
               isPositive
