@@ -21,6 +21,12 @@ const RISK_STYLES = {
     border: 'border-risk-high-border',
     icon: ShieldAlert,
   },
+  gray: {
+    bg: 'bg-muted',
+    text: 'text-muted-foreground',
+    border: 'border-border',
+    icon: CircleDot,
+  },
 };
 
 const STATUS_STYLES = {
@@ -38,6 +44,20 @@ const STATUS_STYLES = {
     icon: WifiOff,
     label: 'Offline',
   },
+  not_configured: {
+    bg: 'bg-muted',
+    text: 'text-muted-foreground',
+    border: 'border-border',
+    icon: CircleDot,
+    label: 'Belum dikonfigurasi',
+  },
+  error: {
+    bg: 'bg-risk-high-bg',
+    text: 'text-status-offline',
+    border: 'border-status-offline/20',
+    icon: ShieldAlert,
+    label: 'Error',
+  },
   active: {
     bg: 'bg-status-online-bg',
     text: 'text-status-active',
@@ -52,11 +72,46 @@ const STATUS_STYLES = {
     icon: CircleDot,
     label: 'Tidak Aktif',
   },
+  disconnected: {
+    bg: 'bg-muted',
+    text: 'text-muted-foreground',
+    border: 'border-border',
+    icon: CircleDot,
+    label: 'Belum terhubung',
+  },
+  no_data: {
+    bg: 'bg-muted',
+    text: 'text-muted-foreground',
+    border: 'border-border',
+    icon: CircleDot,
+    label: 'Belum terhubung',
+  },
+  stale: {
+    bg: 'bg-muted',
+    text: 'text-muted-foreground',
+    border: 'border-border',
+    icon: CircleDot,
+    label: 'Data kedaluwarsa',
+  },
+  gray: {
+    bg: 'bg-muted',
+    text: 'text-muted-foreground',
+    border: 'border-border',
+    icon: CircleDot,
+    label: 'Belum terhubung',
+  },
+  simulation: {
+    bg: 'bg-blue-500/10 dark:bg-blue-500/20',
+    text: 'text-blue-600 dark:text-blue-400',
+    border: 'border-blue-500/30',
+    icon: Activity,
+    label: 'Simulasi Aktif',
+  },
 };
 
 export default function StatusBadge({ type = 'risk', color = 'green', label, size = 'md', showIcon = true }) {
   if (type === 'status') {
-    const style = STATUS_STYLES[color] || STATUS_STYLES.online;
+    const style = STATUS_STYLES[color] || STATUS_STYLES.gray;
     const Icon = style.icon;
 
     return (

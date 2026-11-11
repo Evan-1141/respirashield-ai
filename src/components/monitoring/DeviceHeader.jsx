@@ -22,11 +22,19 @@ export default function DeviceHeader({ device, onRefresh }) {
               <StatusBadge type="status" color={device.status} size="sm" />
             </div>
             <p className="text-xs text-muted mt-0.5">
-              Terakhir diperbarui:{' '}
-              {new Date(device.lastSeen).toLocaleString('id-ID', {
-                day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
-              })}
-              {' '}<span className="text-muted-foreground">• Simulated Data</span>
+              {device.lastSeen ? (
+                <>
+                  Terakhir diperbarui:{' '}
+                  {new Date(device.lastSeen).toLocaleString('id-ID', {
+                    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+                  })}
+                </>
+              ) : (
+                'Komunikasi terakhir: Belum ada komunikasi'
+              )}
+              {device.simulation?.active && (
+                <span className="text-blue-500 font-medium ml-2">• Simulasi Aktif</span>
+              )}
             </p>
           </div>
         </div>

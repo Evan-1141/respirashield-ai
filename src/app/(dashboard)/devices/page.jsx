@@ -29,9 +29,11 @@ export default function DevicesPage() {
   const [sensors, setSensors] = useState([]);
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
   async function loadData() {
     setLoading(true);
+    setLoadError(null);
     try {
       const [dev, sens, act] = await Promise.all([
         getDeviceStatus(), getDeviceSensors(), getDeviceActivity(),
@@ -41,12 +43,16 @@ export default function DevicesPage() {
       setActivity(act);
     } catch (err) {
       console.error('Failed to load device data:', err);
+      setLoadError('Gagal memuat status perangkat. Status tidak diketahui; coba refresh setelah backend tersedia.');
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    const timer = setTimeout(() => { void loadData(); }, 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   if (loading) {
     return (
@@ -56,7 +62,14 @@ export default function DevicesPage() {
     );
   }
 
-  if (!device) return null;
+  if (!device) {
+    return (
+      <div className="max-w-5xl mx-auto space-y-6">
+        <Header title="Perangkat IoT" subtitle="Status dan informasi perangkat monitoring." onRefresh={loadData} />
+        <div className="bg-surface border border-border rounded-xl p-5 text-sm text-muted">{loadError || 'Status tidak diketahui.'}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -66,12 +79,13 @@ export default function DevicesPage() {
         onRefresh={loadData}
       />
 
-      {/* Mock Device Label */}
+      {/* Hardware state notice */}
       <div className="flex items-start gap-2.5 bg-surface-secondary border border-border rounded-xl p-4">
         <Info className="w-4 h-4 text-muted mt-0.5 flex-shrink-0" />
         <p className="text-xs text-muted leading-relaxed">
-          Data berikut merupakan <strong>Mock Device</strong> untuk tujuan pengembangan.
-          Perangkat fisik ESP32 belum terhubung.
+          {device.status === 'online'
+            ? 'Status hanya berasal dari heartbeat atau pembacaan perangkat fisik yang valid.'
+            : 'ESP32 belum terhubung. Status dan pembacaan sensor akan diperbarui setelah perangkat mengirim data valid.'}
         </p>
       </div>
 
@@ -117,21 +131,22 @@ export default function DevicesPage() {
         <h2 className="text-sm font-medium text-muted uppercase tracking-wide mb-4">Status Sensor</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {sensors.map((sensor) => {
-            const isActive = sensor.status === 'active';
+            const isConnected = sensor.statusCode === 'CONNECTED';
             return (
               <div
                 key={sensor.id}
                 className="flex items-start gap-3 p-3 bg-surface-secondary rounded-xl border border-border"
               >
                 <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
-                  isActive ? 'bg-status-active' : 'bg-status-inactive'
+                  isConnected ? 'bg-status-active' : sensor.statusCode === 'ERROR' ? 'bg-status-offline' : 'bg-muted-foreground'
                 }`} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-medium text-foreground truncate">{sensor.name}</p>
                     <StatusBadge
                       type="status"
-                      color={isActive ? 'active' : 'inactive'}
+                      color={sensor.status}
+                      label={sensor.statusLabel}
                       size="sm"
                       showIcon={false}
                     />
@@ -139,14 +154,14 @@ export default function DevicesPage() {
                   <p className="text-xs text-muted mt-0.5">{sensor.type}</p>
                   <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-1.5">
                     <Clock className="w-3 h-3" />
-                    {new Date(sensor.lastUpdate).toLocaleString('id-ID', {
+                    {sensor.lastUpdate ? new Date(sensor.lastUpdate).toLocaleString('id-ID', {
                       day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
-                    })}
+                    }) : 'Belum ada komunikasi'}
                   </div>
                   {sensor.lastReading && (
                     <div className="text-xs text-foreground mt-1.5 font-mono">
                       {Object.entries(sensor.lastReading).map(([key, val]) => (
-                        <span key={key} className="mr-2">{key}: {val}</span>
+                        <span key={key} className="mr-2">{key}: {val ?? '—'}</span>
                       ))}
                       <span className="text-muted">{sensor.unit}</span>
                     </div>
@@ -163,7 +178,7 @@ export default function DevicesPage() {
         <h2 className="text-sm font-medium text-muted uppercase tracking-wide mb-4">Informasi Koneksi</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="flex items-center gap-3">
-            <Wifi className="w-5 h-5 text-status-online" />
+            {device.status === 'online' ? <Wifi className="w-5 h-5 text-status-online" /> : <WifiOff className="w-5 h-5 text-muted" />}
             <div>
               <p className="text-xs text-muted">Wi-Fi Status</p>
               <p className="text-sm font-medium text-foreground">{device.connection.wifiStatus}</p>
@@ -174,7 +189,7 @@ export default function DevicesPage() {
             <Signal className="w-5 h-5 text-primary" />
             <div>
               <p className="text-xs text-muted">Kekuatan Sinyal</p>
-              <p className="text-sm font-medium text-foreground">{device.connection.signalStrength} dBm</p>
+              <p className="text-sm font-medium text-foreground">{device.connection.signalStrength ?? '—'}{device.connection.signalStrength !== null ? ' dBm' : ''}</p>
               <p className="text-xs text-muted">{device.connection.signalQuality}</p>
             </div>
           </div>
@@ -183,9 +198,9 @@ export default function DevicesPage() {
             <div>
               <p className="text-xs text-muted">Komunikasi Terakhir</p>
               <p className="text-sm font-medium text-foreground">
-                {new Date(device.connection.lastCommunication).toLocaleString('id-ID', {
+                {device.connection.lastCommunication ? new Date(device.connection.lastCommunication).toLocaleString('id-ID', {
                   day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
-                })}
+                }) : 'Belum ada komunikasi'}
               </p>
             </div>
           </div>
@@ -196,6 +211,7 @@ export default function DevicesPage() {
       <div className="bg-surface border border-border rounded-xl p-5">
         <h2 className="text-sm font-medium text-muted uppercase tracking-wide mb-4">Aktivitas Perangkat</h2>
         <div className="space-y-0">
+          {activity.length === 0 && <p className="text-sm text-muted">Belum ada komunikasi dari perangkat fisik.</p>}
           {activity.map((item, idx) => {
             const Icon = ACTIVITY_ICONS[item.type] || Activity;
             const colorClass = ACTIVITY_COLORS[item.type] || 'text-muted';

@@ -1,31 +1,78 @@
-'use client';
+﻿'use client';
 
 import RiskBadge from './RiskBadge';
 import { RISK_LEVELS, AQ_THRESHOLDS, ENV_THRESHOLDS } from '@/lib/config';
 import { SMOKING_LABELS } from '@/lib/mock-data';
-import { RotateCcw, Clock, Info } from 'lucide-react';
+import { RotateCcw, Clock, Info, BarChart2 } from 'lucide-react';
 
 export default function PredictionResult({ result, onReset }) {
   if (!result) return null;
 
   const riskInfo = RISK_LEVELS[result.riskLevel];
-  const { userInput, airQuality } = result;
+  const { userInput, airQuality, probabilities } = result;
 
   return (
     <div className="space-y-4 mt-6">
       {/* Main Result */}
-      <div className={`bg-surface border border-border rounded-xl p-5 sm:p-6`}>
+      <div className="bg-surface border border-border rounded-xl p-5 sm:p-6">
         <div className="flex flex-col items-center text-center mb-5">
-          <p className="text-sm text-muted mb-3 uppercase tracking-wide">Hasil Klasifikasi Risiko</p>
+          <p className="text-xs text-muted mb-3 uppercase tracking-wider font-semibold">Hasil Klasifikasi Risiko AI</p>
           <RiskBadge riskLevel={result.riskLevel} size="lg" />
-          <p className="text-sm text-muted mt-3 max-w-md">{riskInfo.description}</p>
-
-          {result.predictionScore && (
-            <p className="text-xs text-muted-foreground mt-2">
-              Skor kepercayaan: {(result.predictionScore * 100).toFixed(0)}%
-            </p>
-          )}
+          <p className="text-sm text-muted mt-3 max-w-md">{riskInfo?.description}</p>
         </div>
+
+        {/* Real Class Probabilities from LogisticRegression */}
+        {probabilities && (
+          <div className="bg-surface-secondary/70 border border-border rounded-xl p-4 mb-5">
+            <div className="flex items-center gap-2 mb-3">
+              <BarChart2 className="w-4 h-4 text-primary" />
+              <h4 className="text-xs font-semibold text-foreground uppercase tracking-wide">
+                Distribusi Probabilitas Model (Logistic Regression)
+              </h4>
+            </div>
+
+            <div className="space-y-2">
+              <div>
+                <div className="flex justify-between text-xs mb-1 font-medium">
+                  <span className="text-risk-low">Risiko Rendah</span>
+                  <span className="text-foreground">{(probabilities.low * 100).toFixed(1)}%</span>
+                </div>
+                <div className="w-full bg-border rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${probabilities.low * 100}%` }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between text-xs mb-1 font-medium">
+                  <span className="text-risk-medium">Risiko Sedang</span>
+                  <span className="text-foreground">{(probabilities.medium * 100).toFixed(1)}%</span>
+                </div>
+                <div className="w-full bg-border rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-amber-500 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${probabilities.medium * 100}%` }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between text-xs mb-1 font-medium">
+                  <span className="text-risk-high">Risiko Tinggi</span>
+                  <span className="text-foreground">{(probabilities.high * 100).toFixed(1)}%</span>
+                </div>
+                <div className="w-full bg-border rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-rose-500 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${probabilities.high * 100}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
           <Clock className="w-3.5 h-3.5" />
@@ -35,6 +82,7 @@ export default function PredictionResult({ result, onReset }) {
               hour: '2-digit', minute: '2-digit',
             })}
           </span>
+          <span className="text-muted">• ID: {result.id}</span>
         </div>
 
         {/* Summary grid */}
@@ -75,12 +123,16 @@ export default function PredictionResult({ result, onReset }) {
                 <span className="text-foreground font-medium">{airQuality.pm10} {AQ_THRESHOLDS.pm10.unit}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted">CO</span>
-                <span className="text-foreground font-medium">{airQuality.co} {AQ_THRESHOLDS.co.unit}</span>
+                <span className="text-muted">SO2 / NO2</span>
+                <span className="text-foreground font-medium">{airQuality.so2} / {airQuality.no2} µg/m³</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted">Suhu</span>
-                <span className="text-foreground font-medium">{airQuality.temperature} {ENV_THRESHOLDS.temperature.unit}</span>
+                <span className="text-muted">CO / O3</span>
+                <span className="text-foreground font-medium">{airQuality.co} mg/m³ / {airQuality.o3} µg/m³</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">Suhu / Kelembaban</span>
+                <span className="text-foreground font-medium">{airQuality.temperature}°C / {airQuality.humidity}%</span>
               </div>
             </div>
           </div>
@@ -89,10 +141,9 @@ export default function PredictionResult({ result, onReset }) {
 
       {/* Disclaimer */}
       <div className="flex items-start gap-2.5 bg-surface-secondary border border-border rounded-xl p-4">
-        <Info className="w-4 h-4 text-muted mt-0.5 flex-shrink-0" />
+        <Info className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
         <p className="text-xs text-muted leading-relaxed">
-          Hasil ini merupakan klasifikasi risiko berbasis data dan bukan diagnosis medis.
-          Konsultasikan dengan tenaga kesehatan untuk evaluasi lebih lanjut.
+          {result.disclaimer || 'Hasil ini merupakan klasifikasi risiko berbasis data kualitas udara dan karakteristik individu, BUKAN diagnosis medis pengganti tenaga kesehatan profesional.'}
         </p>
       </div>
 

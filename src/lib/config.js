@@ -82,6 +82,9 @@ export const ML_MODELS = [
 
 // ─── Helper: Get AQ Status ──────────────────────────────────────────────────
 export function getAQStatus(param, value) {
+  if (value === null || value === undefined || isNaN(value)) {
+    return { label: 'Belum terhubung', color: 'gray' };
+  }
   const threshold = AQ_THRESHOLDS[param];
   if (!threshold) return AQ_STATUS.good;
   if (value <= threshold.good) return AQ_STATUS.good;
@@ -96,6 +99,11 @@ export function validateField(fieldName, value) {
 
   if (rule.required && (value === '' || value === null || value === undefined)) {
     return `${rule.label} wajib diisi.`;
+  }
+
+  // Khusus untuk input yang seharusnya angka, pastikan itu angka valid
+  if (value !== '' && value !== null && value !== undefined && isNaN(Number(value))) {
+    return `${rule.label} harus berupa angka.`;
   }
 
   if (rule.min !== undefined && Number(value) < rule.min) {

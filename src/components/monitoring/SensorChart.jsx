@@ -40,17 +40,24 @@ export default function SensorChart() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    getHistoricalAirQuality(range).then((result) => {
-      if (!cancelled) {
-        setData(result.map((d) => ({
-          time: formatTime(d.timestamp, range),
-          value: Math.round(d[selectedParam] * 10) / 10,
-        })));
-        setLoading(false);
-      }
-    });
-    return () => { cancelled = true; };
+    const timer = setTimeout(() => {
+      setLoading(true);
+      getHistoricalAirQuality(range).then((result) => {
+        if (!cancelled) {
+          setData(result.filter((d) => typeof d[selectedParam] === 'number').map((d) => ({
+            time: formatTime(d.timestamp, range),
+            value: Math.round(d[selectedParam] * 10) / 10,
+          })));
+          setLoading(false);
+        }
+      }).catch(() => {
+        if (!cancelled) {
+          setData([]);
+          setLoading(false);
+        }
+      });
+    }, 0);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [range, selectedParam]);
 
   const paramConfig = PARAMS.find((p) => p.key === selectedParam);
@@ -64,7 +71,7 @@ export default function SensorChart() {
             <h3 className="text-sm font-medium text-muted uppercase tracking-wide">
               Grafik Historis
             </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Simulated Data</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Hanya telemetri perangkat fisik</p>
           </div>
           <div className="flex gap-1 bg-surface-secondary rounded-lg p-1">
             {TIME_RANGES.map((tr) => (

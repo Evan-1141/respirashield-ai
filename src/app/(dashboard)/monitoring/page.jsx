@@ -11,7 +11,7 @@ import { getAQStatus } from '@/lib/config';
 import { ShieldCheck, AlertTriangle, ShieldAlert } from 'lucide-react';
 
 function getOverallStatus(aq) {
-  if (!aq) return null;
+  if (!aq?.available) return null;
   const params = ['pm25', 'pm10', 'co', 'no2', 'so2', 'o3'];
   let worstLevel = 'good';
   for (const p of params) {
@@ -27,21 +27,27 @@ export default function MonitoringPage() {
   const [airQuality, setAirQuality] = useState(null);
   const [device, setDevice] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
   async function loadData() {
     setLoading(true);
+    setLoadError(null);
     try {
       const [aq, dev] = await Promise.all([getAirQuality(), getDeviceStatus()]);
       setAirQuality(aq);
       setDevice(dev);
     } catch (err) {
       console.error('Failed to load monitoring data:', err);
+      setLoadError('Status tidak diketahui / gagal memuat status perangkat.');
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    const timer = setTimeout(() => { void loadData(); }, 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   if (loading) {
     return (
@@ -63,6 +69,18 @@ export default function MonitoringPage() {
 
       <DeviceHeader device={device} onRefresh={loadData} />
 
+      {loadError && (
+        <div className="flex items-center gap-3 bg-surface-secondary border border-border rounded-xl p-4 text-sm text-muted">
+          {loadError}
+        </div>
+      )}
+
+      {!loadError && !airQuality?.available && (
+        <div className="flex items-center gap-3 bg-surface-secondary border border-border rounded-xl p-4 text-sm text-muted">
+          ESP32 belum terhubung. Status dan pembacaan sensor akan diperbarui setelah perangkat mengirim data valid.
+        </div>
+      )}
+
       {/* Overall Status */}
       {overall && (
         <div className={`flex items-center gap-3 bg-${colorMap[overall.color]}-bg border border-${colorMap[overall.color]}-border rounded-xl p-4`}>
@@ -81,7 +99,7 @@ export default function MonitoringPage() {
         <h2 className="text-sm font-medium text-muted uppercase tracking-wide mb-3">Kualitas Udara Terkini</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
           {['pm25', 'pm10', 'co', 'no2', 'so2', 'o3'].map((key) => (
-            <SensorCard key={key} paramKey={key} value={airQuality?.[key] ?? 0} />
+            <SensorCard key={key} paramKey={key} value={airQuality?.[key] ?? null} />
           ))}
         </div>
       </div>
@@ -90,8 +108,8 @@ export default function MonitoringPage() {
       <div>
         <h2 className="text-sm font-medium text-muted uppercase tracking-wide mb-3">Kondisi Lingkungan</h2>
         <div className="grid grid-cols-2 gap-3">
-          <SensorCard paramKey="temperature" value={airQuality?.temperature ?? 0} showStatus={false} />
-          <SensorCard paramKey="humidity" value={airQuality?.humidity ?? 0} showStatus={false} />
+          <SensorCard paramKey="temperature" value={airQuality?.temperature ?? null} showStatus={false} />
+          <SensorCard paramKey="humidity" value={airQuality?.humidity ?? null} showStatus={false} />
         </div>
       </div>
 
