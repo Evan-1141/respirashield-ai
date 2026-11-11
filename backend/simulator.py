@@ -4,6 +4,7 @@ RespiraShield AI - IoT Telemetry Simulator
 Mengirimkan simulasi pembacaan kualitas udara multi-sensor ke backend API.
 """
 
+import os
 import time
 import math
 import random
@@ -12,7 +13,7 @@ from datetime import datetime, timezone
 import requests
 
 DEFAULT_URL = 'http://127.0.0.1:8000/sensor/readings'
-DEFAULT_TOKEN = 'respirashield-secret-token-2026'
+DEFAULT_TOKEN = os.getenv('DEVICE_AUTH_TOKEN')
 DEFAULT_DEVICE = 'RSH-ESP32-001'
 
 def generate_telemetry(anomaly=False):

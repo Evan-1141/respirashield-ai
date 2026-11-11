@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import uuid
+import secrets
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any, Literal
@@ -50,7 +51,13 @@ app.add_middleware(
     allow_headers=['*'],
 )
 
-DEVICE_AUTH_TOKEN = os.getenv('DEVICE_AUTH_TOKEN', 'respirashield-secret-token-2026')
+DEVICE_AUTH_TOKEN = os.getenv('DEVICE_AUTH_TOKEN')
+if not DEVICE_AUTH_TOKEN:
+    # No default token: a value committed to a public repo is not a secret.
+    raise RuntimeError(
+        "DEVICE_AUTH_TOKEN belum diset. Isi di backend/.env (mis. DEVICE_AUTH_TOKEN=<token-acak>), "
+        "atau DEVICE_AUTH_TOKEN=none untuk menonaktifkan autentikasi saat development lokal."
+    )
 
 MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'model', 'respirashield_model.pkl')
 try:
@@ -143,7 +150,7 @@ def verify_device_token(x_device_token: Optional[str] = Header(None, alias='X-De
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail='Header autentikasi perangkat (X-Device-Token) diperlukan.'
             )
-        if token != DEVICE_AUTH_TOKEN:
+        if not secrets.compare_digest(token.encode(), DEVICE_AUTH_TOKEN.encode()):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail='Token autentikasi perangkat tidak valid.'

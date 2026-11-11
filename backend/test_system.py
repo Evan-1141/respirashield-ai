@@ -4,13 +4,14 @@ RespiraShield AI - Automated System Integration Test Suite
 Validates API endpoints, IoT Ingestion, Validation, DB Persistence, and ML Predictions.
 """
 
+import os
 import sys
 import unittest
 from datetime import datetime, timezone
 import requests
 
 BASE_URL = 'http://127.0.0.1:8000'
-AUTH_TOKEN = 'respirashield-secret-token-2026'
+AUTH_TOKEN = os.environ['DEVICE_AUTH_TOKEN']  # harus sama dengan token server yang sedang jalan
 DEVICE_ID = 'RSH-ESP32-001'
 
 class RespiraShieldSystemTests(unittest.TestCase):
