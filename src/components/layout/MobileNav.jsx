@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from './ThemeProvider';
+import UserMenu from './UserMenu';
 import {
   LayoutDashboard,
   Brain,
@@ -161,15 +162,7 @@ export default function MobileNav() {
           </button>
 
           {/* User */}
-          <div className="flex items-center gap-3 px-3 py-2">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <User className="w-4 h-4 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">Evan Danendra</p>
-              <p className="text-xs text-muted">Pengguna</p>
-            </div>
-          </div>
+          <UserMenu className="px-3 py-2" />
         </div>
       </div>
 

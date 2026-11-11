@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 RespiraShield AI - Automated System Integration Test Suite
 Validates API endpoints, IoT Ingestion, Validation, DB Persistence, and ML Predictions.
@@ -6,6 +6,7 @@ Validates API endpoints, IoT Ingestion, Validation, DB Persistence, and ML Predi
 
 import os
 import sys
+import uuid
 import unittest
 from datetime import datetime, timezone
 import requests
@@ -15,6 +16,15 @@ AUTH_TOKEN = os.environ['DEVICE_AUTH_TOKEN']  # harus sama dengan token server y
 DEVICE_ID = 'RSH-ESP32-001'
 
 class RespiraShieldSystemTests(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.email = f'test-{uuid.uuid4().hex[:8]}@example.com'
+        res = requests.post(f"{BASE_URL}/auth/register", json={
+            'name': 'Penguji Sistem', 'email': cls.email, 'password': 'rahasia-123'
+        }, timeout=5)
+        assert res.status_code == 201, res.text
+        cls.user_headers = {'Authorization': f"Bearer {res.json()['token']}"}
 
     def test_01_health_check(self):
         """Test GET /health returns 200, DB connected, and model loaded."""
@@ -155,7 +165,7 @@ class RespiraShieldSystemTests(unittest.TestCase):
             'Status_Merokok': 0,
             'Durasi_Paparan_Outdoor': 2.5
         }
-        res = requests.post(f"{BASE_URL}/predict", json=payload, timeout=5)
+        res = requests.post(f"{BASE_URL}/predict", json=payload, headers=self.user_headers, timeout=5)
         self.assertEqual(res.status_code, 200)
         data = res.json()
         self.assertIn(data.get('risk_class'), [0, 1, 2])
@@ -180,12 +190,12 @@ class RespiraShieldSystemTests(unittest.TestCase):
             'Kelembaban_Udara': 66.0
             # Usia, Riwayat_Asma, Status_Merokok, Durasi_Paparan_Outdoor are MISSING
         }
-        res = requests.post(f"{BASE_URL}/predict", json=payload, timeout=5)
+        res = requests.post(f"{BASE_URL}/predict", json=payload, headers=self.user_headers, timeout=5)
         self.assertEqual(res.status_code, 422)
 
     def test_13_predictions_history(self):
         """Test GET /predictions retrieves stored prediction records from DB."""
-        res = requests.get(f"{BASE_URL}/predictions?limit=10", timeout=5)
+        res = requests.get(f"{BASE_URL}/predictions?limit=10", headers=self.user_headers, timeout=5)
         self.assertEqual(res.status_code, 200)
         data = res.json()
         self.assertIsInstance(data, list)
@@ -198,18 +208,45 @@ class RespiraShieldSystemTests(unittest.TestCase):
 
     def test_14_user_profile_crud(self):
         """Test GET /user/profile and PUT /user/profile persistence."""
-        res = requests.get(f"{BASE_URL}/user/profile?user_id=user-001", timeout=5)
+        res = requests.get(f"{BASE_URL}/user/profile", headers=self.user_headers, timeout=5)
         self.assertEqual(res.status_code, 200)
         data = res.json()
-        self.assertEqual(data.get('id'), 'user-001')
+        self.assertEqual(data.get('email'), self.email)
 
         # Update profile
         update_payload = {'name': 'Evan Danendra Test', 'outdoor_exposure': 4.5}
-        res_put = requests.put(f"{BASE_URL}/user/profile?user_id=user-001", json=update_payload, timeout=5)
+        res_put = requests.put(f"{BASE_URL}/user/profile", json=update_payload, headers=self.user_headers, timeout=5)
         self.assertEqual(res_put.status_code, 200)
         updated = res_put.json()
         self.assertEqual(updated.get('name'), 'Evan Danendra Test')
         self.assertEqual(updated.get('outdoorExposure'), 4.5)
+
+    def test_16_auth_rejects_missing_or_bad_token(self):
+        """Protected endpoints reject requests without a valid session token (401)."""
+        self.assertEqual(requests.get(f"{BASE_URL}/user/profile", timeout=5).status_code, 401)
+        bad = {'Authorization': 'Bearer bukan.token'}
+        self.assertEqual(requests.get(f"{BASE_URL}/predictions", headers=bad, timeout=5).status_code, 401)
+
+    def test_17_auth_login_and_duplicate(self):
+        """Login works with the right password, fails with a wrong one, and emails are unique."""
+        ok = requests.post(f"{BASE_URL}/auth/login", json={'email': self.email.upper(), 'password': 'rahasia-123'}, timeout=5)
+        self.assertEqual(ok.status_code, 200)
+        self.assertIn('token', ok.json())
+        wrong = requests.post(f"{BASE_URL}/auth/login", json={'email': self.email, 'password': 'salah-sekali'}, timeout=5)
+        self.assertEqual(wrong.status_code, 401)
+        dup = requests.post(f"{BASE_URL}/auth/register", json={'name': 'X', 'email': self.email, 'password': 'rahasia-123'}, timeout=5)
+        self.assertEqual(dup.status_code, 409)
+
+    def test_18_predictions_are_private_per_user(self):
+        """A second user cannot see the first user's prediction history."""
+        res = requests.post(f"{BASE_URL}/auth/register", json={
+            'name': 'User Lain', 'email': f'other-{uuid.uuid4().hex[:8]}@example.com', 'password': 'rahasia-456'
+        }, timeout=5)
+        other = {'Authorization': f"Bearer {res.json()['token']}"}
+        self.assertEqual(requests.get(f"{BASE_URL}/predictions", headers=other, timeout=5).json(), [])
+        mine = requests.get(f"{BASE_URL}/predictions", headers=self.user_headers, timeout=5).json()
+        self.assertGreater(len(mine), 0)
+        self.assertEqual(requests.get(f"{BASE_URL}/predictions/{mine[0]['id']}", headers=other, timeout=5).status_code, 404)
 
     def test_15_system_summary(self):
         """Test GET /system/status returns complete system telemetry overview."""

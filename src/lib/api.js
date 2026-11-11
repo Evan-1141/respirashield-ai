@@ -9,16 +9,46 @@ import { RISK_LEVELS } from './config';
 // Base API configuration (Next.js public env or default localhost:8000)
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
+// shortcut: token in localStorage is readable by any XSS on this origin; move to an httpOnly cookie if the app goes public.
+export const TOKEN_KEY = 'respirashield_token';
+export const USER_KEY = 'respirashield_user';
+
+export function getToken() {
+  try { return localStorage.getItem(TOKEN_KEY); } catch { return null; }
+}
+
+function saveSession({ token, user }) {
+  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  return user;
+}
+
+export function logout() {
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+  } catch {}
+}
+
 async function fetchFromApi(endpoint, options = {}) {
   const url = `${API_URL}${endpoint}`;
+  const token = getToken();
   try {
     const res = await fetch(url, {
+      ...options,
       headers: {
         'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers,
       },
-      ...options,
     });
+
+    if (res.status === 401 && token) {
+      logout();
+      // Plain helper outside React, so no router here; a full reload also clears stale page state.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.href = '/login';
+    }
 
     if (!res.ok) {
       let detailMsg = `HTTP ${res.status}`;
@@ -180,11 +210,27 @@ export async function predictRisk(formData) {
 
 // ─── User Profile ───────────────────────────────────────────────────────────
 
-export async function getUserProfile(userId = 'user-001') {
-  return await fetchFromApi(`/user/profile?user_id=${encodeURIComponent(userId)}`);
+// ─── Auth ───────────────────────────────────────────────────────────────────
+
+export async function login(email, password) {
+  return saveSession(await fetchFromApi('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  }));
 }
 
-export async function updateUserProfile(data, userId = 'user-001') {
+export async function register(name, email, password) {
+  return saveSession(await fetchFromApi('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ name, email, password }),
+  }));
+}
+
+export async function getUserProfile() {
+  return await fetchFromApi('/user/profile');
+}
+
+export async function updateUserProfile(data) {
   const payload = {
     name: data.name,
     age: data.age !== undefined ? Number(data.age) : undefined,
@@ -193,7 +239,7 @@ export async function updateUserProfile(data, userId = 'user-001') {
     outdoor_exposure: data.outdoorExposure !== undefined ? Number(data.outdoorExposure) : undefined,
   };
 
-  return await fetchFromApi(`/user/profile?user_id=${encodeURIComponent(userId)}`, {
+  return await fetchFromApi('/user/profile', {
     method: 'PUT',
     body: JSON.stringify(payload),
   });

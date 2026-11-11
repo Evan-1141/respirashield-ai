@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from database.db import (
     init_db, get_db, Device, SensorReading, PredictionRecord, UserProfile, engine
 )
+import auth
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(name)s: %(message)s')
 logger = logging.getLogger('respirashield.api')
@@ -138,9 +139,33 @@ class UserProfileUpdate(BaseModel):
     smoking_status: Optional[str] = None
     outdoor_exposure: Optional[float] = Field(None, ge=0.0, le=24.0)
 
+EMAIL_PATTERN = r'^[^@\s]+@[^@\s]+\.[^@\s]+$'
+
+class RegisterRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=128)
+    email: str = Field(..., max_length=255, pattern=EMAIL_PATTERN)
+    password: str = Field(..., min_length=8, max_length=128)
+
+class LoginRequest(BaseModel):
+    email: str = Field(..., max_length=255)
+    password: str = Field(..., max_length=128)
+
 # -----------------------------------------------------------------------------
 # AUTHENTICATION
 # -----------------------------------------------------------------------------
+def get_current_user(authorization: Optional[str] = Header(None), db: Session = Depends(get_db)) -> UserProfile:
+    token = authorization[7:] if authorization and authorization.startswith('Bearer ') else None
+    user_id = auth.read_token(token) if token else None
+    user = db.query(UserProfile).filter(UserProfile.id == user_id).first() if user_id else None
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='Sesi tidak valid atau sudah berakhir. Silakan masuk kembali.',
+            headers={'WWW-Authenticate': 'Bearer'},
+        )
+    return user
+
+
 def verify_device_token(x_device_token: Optional[str] = Header(None, alias='X-Device-Token'),
                         x_api_key: Optional[str] = Header(None, alias='X-API-Key')):
     token = x_device_token or x_api_key
@@ -695,7 +720,7 @@ def get_device_activity(device_id: str, db: Session = Depends(get_db)):
 # MACHINE LEARNING PREDICTION
 # -----------------------------------------------------------------------------
 @app.post('/predict', tags=['Machine Learning'])
-def predict_risk(data: PredictionRequest, db: Session = Depends(get_db)):
+def predict_risk(data: PredictionRequest, db: Session = Depends(get_db), user: UserProfile = Depends(get_current_user)):
     if ml_pipeline is None:
         raise HTTPException(status_code=503, detail='Model Machine Learning tidak tersedia.')
 
@@ -738,7 +763,7 @@ def predict_risk(data: PredictionRequest, db: Session = Depends(get_db)):
         rec = PredictionRecord(
             id=pred_id,
             sensor_reading_id=data.sensor_reading_id,
-            user_profile_id=data.user_profile_id,
+            user_profile_id=user.id,
             risk_class=prediction_class,
             risk_label=risk_label,
             prob_low=prob_low,
@@ -769,9 +794,10 @@ def predict_risk(data: PredictionRequest, db: Session = Depends(get_db)):
 def list_predictions(
     limit: int = Query(50, ge=1, le=200),
     risk_level: Optional[int] = Query(None, ge=0, le=2),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: UserProfile = Depends(get_current_user)
 ):
-    query = db.query(PredictionRecord)
+    query = db.query(PredictionRecord).filter(PredictionRecord.user_profile_id == user.id)
     if risk_level is not None:
         query = query.filter(PredictionRecord.risk_class == risk_level)
     records = query.order_by(desc(PredictionRecord.created_at)).limit(limit).all()
@@ -812,8 +838,10 @@ def list_predictions(
     return result
 
 @app.get('/predictions/{prediction_id}', tags=['Machine Learning'])
-def get_prediction_detail(prediction_id: str, db: Session = Depends(get_db)):
-    r = db.query(PredictionRecord).filter(PredictionRecord.id == prediction_id).first()
+def get_prediction_detail(prediction_id: str, db: Session = Depends(get_db), user: UserProfile = Depends(get_current_user)):
+    r = db.query(PredictionRecord).filter(
+        PredictionRecord.id == prediction_id, PredictionRecord.user_profile_id == user.id
+    ).first()
     if not r:
         raise HTTPException(status_code=404, detail=f'Prediksi {prediction_id} tidak ditemukan.')
     features = {}
@@ -851,28 +879,52 @@ def get_prediction_detail(prediction_id: str, db: Session = Depends(get_db)):
 # -----------------------------------------------------------------------------
 # USER PROFILE
 # -----------------------------------------------------------------------------
-@app.get('/user/profile', tags=['User Profile'])
-def get_user_profile(user_id: str = 'user-001', db: Session = Depends(get_db)):
-    prof = db.query(UserProfile).filter(UserProfile.id == user_id).first()
-    if not prof:
-        raise HTTPException(status_code=404, detail='User profile tidak ditemukan.')
-    created_at = prof.created_at.replace(tzinfo=timezone.utc) if prof.created_at.tzinfo is None else prof.created_at
+def profile_out(prof: UserProfile) -> dict:
     return {
         'id': prof.id,
         'name': prof.name,
+        'email': prof.email,
         'age': prof.age,
         'asthmaHistory': prof.asthma_history,
         'smokingStatus': prof.smoking_status,
         'outdoorExposure': prof.outdoor_exposure,
-        'createdAt': created_at.isoformat()
+        'createdAt': as_utc(prof.created_at).isoformat() if prof.created_at else None,
     }
 
+@app.post('/auth/register', status_code=status.HTTP_201_CREATED, tags=['Auth'])
+def register(payload: RegisterRequest, db: Session = Depends(get_db)):
+    email = payload.email.strip().lower()
+    if db.query(UserProfile).filter(UserProfile.email == email).first():
+        raise HTTPException(status_code=409, detail='Email sudah terdaftar. Silakan masuk.')
+    user = UserProfile(
+        id=f'user-{uuid.uuid4().hex[:12]}',
+        name=payload.name.strip(),
+        email=email,
+        password_hash=auth.hash_password(payload.password),
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {'token': auth.create_token(user.id), 'user': profile_out(user)}
+
+@app.post('/auth/login', tags=['Auth'])
+def login(payload: LoginRequest, db: Session = Depends(get_db)):
+    user = db.query(UserProfile).filter(UserProfile.email == payload.email.strip().lower()).first()
+    if not user or not auth.verify_password(payload.password, user.password_hash):
+        raise HTTPException(status_code=401, detail='Email atau password salah.')
+    return {'token': auth.create_token(user.id), 'user': profile_out(user)}
+
+@app.get('/auth/me', tags=['Auth'])
+def me(user: UserProfile = Depends(get_current_user)):
+    return profile_out(user)
+
+@app.get('/user/profile', tags=['User Profile'])
+def get_user_profile(user: UserProfile = Depends(get_current_user)):
+    return profile_out(user)
+
 @app.put('/user/profile', tags=['User Profile'])
-def update_user_profile(payload: UserProfileUpdate, user_id: str = 'user-001', db: Session = Depends(get_db)):
-    prof = db.query(UserProfile).filter(UserProfile.id == user_id).first()
-    if not prof:
-        prof = UserProfile(id=user_id)
-        db.add(prof)
+def update_user_profile(payload: UserProfileUpdate, db: Session = Depends(get_db), user: UserProfile = Depends(get_current_user)):
+    prof = user
 
     if payload.name is not None:
         prof.name = payload.name

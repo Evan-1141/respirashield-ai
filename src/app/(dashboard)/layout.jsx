@@ -1,10 +1,24 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import ThemeProvider from '@/components/layout/ThemeProvider';
 import Sidebar from '@/components/layout/Sidebar';
 import MobileNav from '@/components/layout/MobileNav';
+import { TOKEN_KEY } from '@/lib/api';
+import useStorageItem from '@/lib/useStorageItem';
 
 export default function DashboardLayout({ children }) {
+  const router = useRouter();
+  const token = useStorageItem(TOKEN_KEY);
+
+  // Client-side gate only; the backend still enforces auth on every protected endpoint.
+  useEffect(() => {
+    if (token === '') router.replace('/login');
+  }, [token, router]);
+
+  if (!token) return null;
+
   return (
     <ThemeProvider>
       <div className="flex h-dvh overflow-hidden">
