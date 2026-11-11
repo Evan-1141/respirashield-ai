@@ -71,6 +71,8 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     asthma_history BOOLEAN NOT NULL DEFAULT FALSE,
     smoking_status VARCHAR(32) NOT NULL DEFAULT 'never' CHECK (smoking_status IN ('never', 'former', 'active')),
     outdoor_exposure NUMERIC(4, 1) NOT NULL DEFAULT 2.0 CHECK (outdoor_exposure >= 0 AND outdoor_exposure <= 24),
+    email VARCHAR(255) UNIQUE,
+    password_hash VARCHAR(255),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

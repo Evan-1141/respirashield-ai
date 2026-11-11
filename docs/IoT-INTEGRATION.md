@@ -38,7 +38,7 @@ RespiraShield AI menggunakan arsitektur modular berbasis **HTTP REST Ingestion**
 | Nama Header | Tipe | Contoh Nilai | Deskripsi |
 |---|---|---|---|
 | `Content-Type` | string | `application/json` | Format pengiriman data |
-| `X-Device-Token` | string | `respirashield-secret-token-2026` | Kunci autentikasi perangkat (dikonfigurasi di server via `.env`) |
+| `X-Device-Token` | string | `<DEVICE_AUTH_TOKEN dari backend/.env>` | Kunci autentikasi perangkat (dikonfigurasi di server via `.env`) |
 
 ### Format Payload JSON
 ```json
@@ -138,7 +138,7 @@ Berikut adalah kerangka koneksi HTTP, **bukan firmware siap-flash untuk sensor f
 const char* WIFI_SSID     = "Nama_WiFi_Anda";
 const char* WIFI_PASSWORD = "Password_WiFi_Anda";
 const char* SERVER_URL    = "http://192.168.1.100:8000/sensor/readings";
-const char* DEVICE_TOKEN  = "respirashield-secret-token-2026";
+const char* DEVICE_TOKEN  = "<DEVICE_AUTH_TOKEN dari backend/.env>";
 const char* DEVICE_ID     = "RSH-ESP32-001";
 
 // Interval pengiriman (30 detik)
@@ -224,5 +224,5 @@ Saat hardware fisik siap dirakit dan disambungkan:
 2. **Skema ADC**: ESP32 memiliki non-linearitas ADC pada rentang 0-0.1V dan 3.1-3.3V. Pastikan menggunakan *voltage divider* atau eksternal ADC (ADS1115 16-bit) untuk sensor gas analog.
 3. **Daya (Power Supply)**: Modul gas (MQ-7, MQ-131) memerlukan arus pemanas (heater) yang cukup besar (~150-200mA per modul). Gunakan catu daya eksternal 5V 2A–3A, jangan hanya mengandalkan daya port USB laptop/PC.
 4. **Uji Validasi**:
-   * Kirim satu payload manual menggunakan Postman / curl dengan token `respirashield-secret-token-2026`.
+   * Kirim satu payload manual menggunakan Postman / curl dengan token `<DEVICE_AUTH_TOKEN dari backend/.env>`.
    * Periksa apakah status di web dashboard seketika beralih ke badge hijau: **`Sensor Fisik (IoT)`**.

@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# local database (dibuat otomatis oleh backend/database/db.py)
+*.db
+*.sqlite3

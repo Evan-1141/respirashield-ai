@@ -94,6 +94,8 @@ class UserProfile(Base):
     asthma_history = Column(Boolean, default=False)
     smoking_status = Column(String(32), default='never')
     outdoor_exposure = Column(Float, default=2.0)
+    email = Column(String(255), unique=True, index=True, nullable=True)
+    password_hash = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -213,6 +215,13 @@ def _migrate_status_columns():
                 connection.exec_driver_sql('ALTER TABLE devices ADD COLUMN reported_error TEXT')
             if 'reported_error_at' not in device_columns:
                 connection.exec_driver_sql('ALTER TABLE devices ADD COLUMN reported_error_at DATETIME')
+
+            profile_columns = {row[1] for row in connection.exec_driver_sql('PRAGMA table_info(user_profiles)')}
+            if 'email' not in profile_columns:
+                connection.exec_driver_sql('ALTER TABLE user_profiles ADD COLUMN email VARCHAR(255)')
+                connection.exec_driver_sql('CREATE UNIQUE INDEX IF NOT EXISTS ix_user_profiles_email ON user_profiles (email)')
+            if 'password_hash' not in profile_columns:
+                connection.exec_driver_sql('ALTER TABLE user_profiles ADD COLUMN password_hash VARCHAR(255)')
 
             columns = connection.exec_driver_sql('PRAGMA table_info(sensor_readings)').fetchall()
             by_name = {row[1]: row for row in columns}

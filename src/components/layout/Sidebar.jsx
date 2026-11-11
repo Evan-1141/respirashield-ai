@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from './ThemeProvider';
+import UserMenu from './UserMenu';
 import {
   LayoutDashboard,
   Brain,
@@ -139,17 +140,7 @@ export default function Sidebar() {
       {/* User */}
       {!collapsed && (
         <div className="px-4 py-3 border-t border-sidebar-border">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <User className="w-4 h-4 text-primary" />
-            </div>
-            <div className="overflow-hidden">
-              <p className="text-sm font-medium text-foreground truncate">
-                Evan Danendra
-              </p>
-              <p className="text-xs text-muted truncate">Pengguna</p>
-            </div>
-          </div>
+          <UserMenu />
         </div>
       )}
     </aside>
